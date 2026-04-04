@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>FormCraft Pro</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════ APP SHELL -->
+<div class="app" id="app">
+
+  <!-- ── TOPBAR ─────────────────────────────────────────────────────────── -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg viewBox="0 0 20 20" fill="none">
+            <rect x="2" y="2" width="7" height="7" rx="2" fill="currentColor"/>
+            <rect x="11" y="2" width="7" height="7" rx="2" fill="currentColor" opacity=".5"/>
+            <rect x="2" y="11" width="7" height="7" rx="2" fill="currentColor" opacity=".5"/>
+            <rect x="11" y="11" width="7" height="7" rx="2" fill="currentColor" opacity=".25"/>
+          </svg>
+        </div>
+        <span class="brand-name">FormCraft</span>
+        <span class="brand-tag">Pro</span>
+      </div>
+    </div>
+
+    <div class="topbar-center">
+      <div class="form-title-wrap" id="form-title-wrap">
+        <input class="form-title-input" id="active-form-title"
+          placeholder="Untitled Form" maxlength="80"
+          oninput="onTitleInput(this.value)"/>
+        <span class="title-edit-icon">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 2l3 3L5 14H2v-3L11 2z"/>
+          </svg>
+        </span>
+      </div>
+    </div>
+
+    <div class="topbar-right">
+      <div class="tab-switcher" id="tab-switcher">
+        <button class="ts-btn active" data-tab="build" onclick="switchMainTab('build')">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/>
+            <rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/>
+          </svg>
+          Build
+        </button>
+        <button class="ts-btn" data-tab="preview" onclick="switchMainTab('preview')">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1 8s3-5 7-5 7 5 7 5-3 5-7 5-7-5-7-5z"/><circle cx="8" cy="8" r="2"/>
+          </svg>
+          Preview
+        </button>
+        <button class="ts-btn" data-tab="settings" onclick="switchMainTab('settings')">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="8" cy="8" r="2.5"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.22 3.22l1.42 1.42M11.36 11.36l1.42 1.42M11.36 4.64l-1.42 1.42M4.64 11.36l-1.42 1.42"/>
+          </svg>
+          Settings
+        </button>
+      </div>
+
+      <div class="topbar-actions">
+        <button class="btn btn-ghost btn-sm" onclick="exportJSON()">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v9M5 8l3 3 3-3M2 13h12"/></svg>
+          Export
+        </button>
+        <button class="btn btn-primary btn-sm" onclick="publishForm()">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4l-5 5-5-5"/><path d="M2 12h12"/></svg>
+          Publish
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── WORKSPACE ─────────────────────────────────────────────────────── -->
+  <div class="workspace" id="workspace">
+
+    <!-- LEFT: Forms list + field palette -->
+    <aside class="left-panel" id="left-panel">
+
+      <!-- Forms list -->
+      <div class="panel-section">
+        <div class="panel-section-header">
+          <span class="panel-section-title">My Forms</span>
+          <button class="icon-btn-sm" title="New form" onclick="createNewForm()">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>
+          </button>
+        </div>
+        <div class="forms-list" id="forms-list"></div>
+      </div>
+
+      <div class="panel-divider"></div>
+
+      <!-- Field palette -->
+      <div class="panel-section palette-section">
+        <div class="panel-section-header">
+          <span class="panel-section-title">Add Field</span>
+        </div>
+        <div class="palette-grid" id="palette-grid">
+          <!-- injected by JS -->
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- CENTER: Build / Preview / Settings tabs -->
+    <main class="main-area" id="main-area">
+
+      <!-- BUILD TAB -->
+      <div class="main-tab active" id="tab-build">
+        <div class="canvas-wrap" id="canvas-wrap">
+          <div class="canvas-empty" id="canvas-empty">
+            <div class="canvas-empty-art">
+              <svg viewBox="0 0 80 80" fill="none" width="80" height="80">
+                <rect x="10" y="18" width="60" height="10" rx="5" fill="currentColor" opacity=".12"/>
+                <rect x="10" y="34" width="60" height="10" rx="5" fill="currentColor" opacity=".08"/>
+                <rect x="10" y="50" width="40" height="10" rx="5" fill="currentColor" opacity=".06"/>
+                <circle cx="64" cy="55" r="12" fill="currentColor" opacity=".1"/>
+                <path d="M60 55h8M64 51v8" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".4"/>
+              </svg>
+            </div>
+            <h3>Your form is empty</h3>
+            <p>Click a field type on the left to add your first field</p>
+          </div>
+          <div class="canvas-fields" id="canvas-fields"></div>
+        </div>
+      </div>
+
+      <!-- PREVIEW TAB -->
+      <div class="main-tab" id="tab-preview">
+        <div class="preview-wrap">
+          <div class="preview-device">
+            <div class="preview-form-card" id="preview-form-card">
+              <div class="preview-form-header">
+                <h2 class="preview-form-title" id="preview-title">Untitled Form</h2>
+                <p class="preview-form-desc" id="preview-desc"></p>
+              </div>
+              <div class="preview-form-body" id="preview-body"></div>
+              <div class="preview-form-footer">
+                <button class="preview-submit-btn" onclick="handlePreviewSubmit()">Submit</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SETTINGS TAB -->
+      <div class="main-tab" id="tab-settings">
+        <div class="settings-wrap">
+          <div class="settings-card">
+
+            <div class="settings-block">
+              <h3 class="settings-block-title">Form Identity</h3>
+              <div class="settings-field">
+                <label class="settings-label">Form title</label>
+                <input type="text" id="s-form-title" placeholder="Untitled Form" oninput="syncSettingsTitle(this.value)"/>
+              </div>
+              <div class="settings-field">
+                <label class="settings-label">Description</label>
+                <textarea id="s-form-desc" rows="3" placeholder="Describe what this form is for…" oninput="syncSettingsDesc(this.value)"></textarea>
+              </div>
+            </div>
+
+            <div class="settings-divider"></div>
+
+            <div class="settings-block">
+              <h3 class="settings-block-title">Submission Target</h3>
+              <p class="settings-block-desc">Paste your Google Apps Script Web App URL to send responses to Google Sheets.</p>
+              <div class="settings-field">
+                <label class="settings-label">Action URL</label>
+                <div class="url-field-wrap">
+                  <span class="url-field-icon">
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M7 9a4 4 0 005.66-5.66l-.7-.7M9 7a4 4 0 00-5.66 5.66l.7.7"/><path d="M9.5 6.5l-3 3"/></svg>
+                  </span>
+                  <input type="url" id="s-action-url" placeholder="https://script.google.com/macros/s/…/exec" oninput="syncActionUrl(this.value)"/>
+                </div>
+              </div>
+              <div class="settings-row-2">
+                <div class="settings-field">
+                  <label class="settings-label">Method</label>
+                  <select id="s-method">
+                    <option value="POST" selected>POST</option>
+                    <option value="PUT">PUT</option>
+                    <option value="PATCH">PATCH</option>
+                  </select>
+                </div>
+                <div class="settings-field">
+                  <label class="settings-label">Content type</label>
+                  <select id="s-content-type">
+                    <option value="application/json" selected>application/json</option>
+                    <option value="application/x-www-form-urlencoded">form-urlencoded</option>
+                  </select>
+                </div>
+              </div>
+              <div class="settings-field">
+                <label class="settings-label">Custom headers <span class="settings-label-hint">(JSON)</span></label>
+                <textarea id="s-headers" rows="3" placeholder='{"Authorization":"Bearer TOKEN"}'></textarea>
+              </div>
+            </div>
+
+            <div class="settings-divider"></div>
+
+            <div class="settings-block">
+              <h3 class="settings-block-title">After Submission</h3>
+              <div class="settings-field">
+                <label class="settings-label">Success message</label>
+                <input type="text" id="s-success-msg" value="Thank you! Your response has been submitted."/>
+              </div>
+              <div class="settings-field">
+                <label class="settings-label">Redirect URL <span class="settings-label-hint">(optional)</span></label>
+                <input type="url" id="s-redirect-url" placeholder="https://yoursite.com/thank-you"/>
+              </div>
+              <div class="settings-toggle-row">
+                <div>
+                  <p class="settings-toggle-label">Reset form after submit</p>
+                  <p class="settings-label-hint">Clears all values on success</p>
+                </div>
+                <label class="toggle">
+                  <input type="checkbox" id="s-reset-after" checked/>
+                  <div class="toggle-track"></div>
+                </label>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+    </main>
+
+  </div><!-- /workspace -->
+</div><!-- /app -->
+
+
+<!-- ═══════════════════════════════════════════ FIELD EDIT DIALOG -->
+<div class="dialog-backdrop" id="dialog-backdrop" onclick="closeDialog()"></div>
+<div class="dialog" id="field-dialog" role="dialog" aria-modal="true">
+
+  <div class="dialog-header">
+    <div class="dialog-header-left">
+      <div class="dialog-type-pill" id="dialog-type-pill"></div>
+      <h2 class="dialog-title">Edit field</h2>
+    </div>
+    <button class="dialog-close" onclick="closeDialog()" aria-label="Close dialog">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M2 2l12 12M14 2L2 14"/></svg>
+    </button>
+  </div>
+
+  <div class="dialog-tabs" id="dialog-tabs">
+    <button class="dtab active" data-dtab="basic"      onclick="switchDialogTab('basic')">Basic</button>
+    <button class="dtab"        data-dtab="validation" onclick="switchDialogTab('validation')">Validation</button>
+    <button class="dtab"        data-dtab="options"    onclick="switchDialogTab('options')" id="dtab-options">Options</button>
+  </div>
+
+  <div class="dialog-body" id="dialog-body">
+
+    <!-- BASIC TAB -->
+    <div class="dtab-pane active" id="dpane-basic">
+      <div class="dfield">
+        <label class="dlabel">Label <span class="dreq">*</span></label>
+        <input type="text" id="df-label" placeholder="Field label" oninput="dialogUpd('label',this.value)"/>
+      </div>
+      <div class="dfield">
+        <label class="dlabel">Field name <span class="dlabel-hint">(used as the data key)</span></label>
+        <div class="field-name-wrap">
+          <input type="text" id="df-name" placeholder="field_name" oninput="dialogUpd('name',this.value)" class="monospace"/>
+          <button class="name-auto-btn" onclick="autoFieldName()" title="Auto-generate from label">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8a6 6 0 1010.8-3.6M11 1l1.8 3.4L16 4"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="dfield" id="df-placeholder-wrap">
+        <label class="dlabel">Placeholder</label>
+        <input type="text" id="df-placeholder" placeholder="Placeholder text…" oninput="dialogUpd('placeholder',this.value)"/>
+      </div>
+      <div class="dfield">
+        <label class="dlabel">Helper text <span class="dlabel-hint">(shown below the field)</span></label>
+        <input type="text" id="df-hint" placeholder="Optional guidance for users…" oninput="dialogUpd('hint',this.value)"/>
+      </div>
+      <!-- Checkbox / Radio specific -->
+      <div class="dfield" id="df-checklabel-wrap" style="display:none">
+        <label class="dlabel">Checkbox label</label>
+        <input type="text" id="df-checklabel" placeholder="I agree to the terms…" oninput="dialogUpd('checkboxLabel',this.value)"/>
+      </div>
+      <!-- Number range -->
+      <div class="dfield-row" id="df-minmax-wrap" style="display:none">
+        <div class="dfield">
+          <label class="dlabel">Min value</label>
+          <input type="number" id="df-min" placeholder="—" oninput="dialogUpd('min',this.value)"/>
+        </div>
+        <div class="dfield">
+          <label class="dlabel">Max value</label>
+          <input type="number" id="df-max" placeholder="—" oninput="dialogUpd('max',this.value)"/>
+        </div>
+      </div>
+      <!-- Slider specific -->
+      <div class="dfield-row" id="df-range-wrap" style="display:none">
+        <div class="dfield">
+          <label class="dlabel">Min</label>
+          <input type="number" id="df-range-min" oninput="dialogUpd('min',+this.value)"/>
+        </div>
+        <div class="dfield">
+          <label class="dlabel">Max</label>
+          <input type="number" id="df-range-max" oninput="dialogUpd('max',+this.value)"/>
+        </div>
+        <div class="dfield">
+          <label class="dlabel">Step</label>
+          <input type="number" id="df-range-step" oninput="dialogUpd('step',+this.value||1)"/>
+        </div>
+        <div class="dfield">
+          <label class="dlabel">Default</label>
+          <input type="number" id="df-range-default" oninput="dialogUpd('defaultVal',+this.value)"/>
+        </div>
+      </div>
+      <!-- Textarea rows -->
+      <div class="dfield" id="df-rows-wrap" style="display:none">
+        <label class="dlabel">Rows</label>
+        <input type="number" id="df-rows" min="2" max="20" style="width:90px" oninput="dialogUpd('rows',+this.value||4)"/>
+      </div>
+      <!-- File specific -->
+      <div class="dfield" id="df-accept-wrap" style="display:none">
+        <label class="dlabel">Accepted file types <span class="dlabel-hint">(e.g. image/*,.pdf)</span></label>
+        <input type="text" id="df-accept" placeholder="image/*,.pdf,.docx" oninput="dialogUpd('accept',this.value)"/>
+      </div>
+      <!-- Divider specific -->
+      <div class="dfield" id="df-divider-wrap" style="display:none">
+        <label class="dlabel">Section title</label>
+        <input type="text" id="df-divider-label" placeholder="Section Title" oninput="dialogUpd('label',this.value)"/>
+      </div>
+    </div>
+
+    <!-- VALIDATION TAB -->
+    <div class="dtab-pane" id="dpane-validation">
+      <div class="dtoggle-row">
+        <div>
+          <p class="dlabel">Required field</p>
+          <p class="dlabel-hint">User must fill this before submitting</p>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="df-required" onchange="dialogUpd('required',this.checked)"/>
+          <div class="toggle-track"></div>
+        </label>
+      </div>
+      <div class="dfield" id="df-email-val" style="display:none">
+        <div class="dinfo-box">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><circle cx="8" cy="8" r="6"/><path d="M8 5v3M8 10.5h.01"/></svg>
+          Email format is validated automatically on submit.
+        </div>
+      </div>
+      <div class="dfield" id="df-url-val" style="display:none">
+        <div class="dinfo-box">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><circle cx="8" cy="8" r="6"/><path d="M8 5v3M8 10.5h.01"/></svg>
+          URL format is validated automatically on submit.
+        </div>
+      </div>
+      <div id="df-minmax-val-wrap">
+        <div class="dfield-row" id="df-val-minmax" style="display:none">
+          <div class="dfield">
+            <label class="dlabel">Min length / value</label>
+            <input type="number" id="df-val-min" placeholder="—" oninput="dialogUpd('validMin',this.value)"/>
+          </div>
+          <div class="dfield">
+            <label class="dlabel">Max length / value</label>
+            <input type="number" id="df-val-max" placeholder="—" oninput="dialogUpd('validMax',this.value)"/>
+          </div>
+        </div>
+      </div>
+      <div class="dfield" id="df-pattern-wrap" style="display:none">
+        <label class="dlabel">Regex pattern <span class="dlabel-hint">(optional)</span></label>
+        <input type="text" id="df-pattern" placeholder="^[A-Za-z]+$" class="monospace" oninput="dialogUpd('pattern',this.value)"/>
+      </div>
+      <div class="dfield" id="df-multiple-wrap" style="display:none">
+        <div class="dtoggle-row" style="padding:0">
+          <div>
+            <p class="dlabel">Allow multiple files</p>
+            <p class="dlabel-hint">User can select more than one file</p>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="df-multiple" onchange="dialogUpd('multiple',this.checked)"/>
+            <div class="toggle-track"></div>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- OPTIONS TAB (select / radio) -->
+    <div class="dtab-pane" id="dpane-options">
+      <div class="dfield">
+        <label class="dlabel">Options <span class="dlabel-hint">(one per line)</span></label>
+        <textarea id="df-options" rows="8" placeholder="Option A&#10;Option B&#10;Option C" class="monospace" oninput="dialogUpd('optionsRaw',this.value)"></textarea>
+      </div>
+      <div class="dinfo-box" style="margin-top:8px">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><circle cx="8" cy="8" r="6"/><path d="M8 5v3M8 10.5h.01"/></svg>
+        Enter each option on its own line. Blank lines are ignored.
+      </div>
+    </div>
+
+  </div><!-- /dialog-body -->
+
+  <div class="dialog-footer">
+    <button class="btn btn-danger-ghost btn-sm" onclick="deleteEditingField()">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h12M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1M10 8v4M6 8v4M3 4l1 9a1 1 0 001 1h6a1 1 0 001-1l1-9"/></svg>
+      Delete field
+    </button>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost btn-sm" onclick="closeDialog()">Cancel</button>
+      <button class="btn btn-primary btn-sm" onclick="saveDialog()">Save changes</button>
+    </div>
+  </div>
+
+</div><!-- /dialog -->
+
+
+<!-- ═══════════════════════════════════════════ SUBMISSION OVERLAY -->
+<div class="submit-overlay" id="submit-overlay">
+  <div class="submit-modal">
+    <div class="submit-spinner" id="sub-spinner"></div>
+    <div class="submit-modal-icon" id="sub-icon" style="display:none"></div>
+    <p class="submit-modal-title" id="sub-title">Submitting…</p>
+    <p class="submit-modal-sub" id="sub-sub">Sending data to your endpoint</p>
+    <div class="submit-modal-details" id="sub-details" style="display:none"></div>
+    <div class="submit-modal-actions" id="sub-actions" style="display:none">
+      <button class="btn btn-ghost btn-sm" onclick="closeSubmitOverlay()">Close</button>
+      <button class="btn btn-primary btn-sm" id="sub-retry" style="display:none" onclick="retrySubmit()">Retry</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ TOAST CONTAINER -->
+<div id="toast-root"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
