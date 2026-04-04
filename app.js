@@ -967,7 +967,7 @@ function publishForm() {
   const schema  = buildSchema(f);
   const encoded = encodeSchema(schema);
   const base    = window.location.href.replace(/\/[^\/]*$/, '/');  /* same dir */
-  const pubUrl  = base + 'form.html?s=' + encoded;
+  const pubUrl  = base + '#/form?s=' + encoded;
 
   /* Render the publish modal */
   openPublishModal(pubUrl, f.title);
