@@ -64,7 +64,9 @@ function esc(s) {
 
 function labelToName(label) {
   return (label||'').toLowerCase().trim()
-    .replace(/[^a-z0-9\s_]/g,'').replace(/\s+/g,'_').replace(/^_+|_+$/g,'') || 'field';
+    .replace(/[^a-z0-9\s_-]/g,'')
+    .replace(/[-\s]+/g,'_')
+    .replace(/^_+|_+$/g,'') || 'field';
 }
 
 function parseOptions(raw) {
@@ -80,9 +82,17 @@ function svgIcon(paths,size=14) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   BOOTSTRAP
+   BOOTSTRAP & ROUTING
    ══════════════════════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
+  // Check if this is a published form submission link
+  const publishedSchema = parsePublishUrl();
+  if (publishedSchema) {
+    renderPublishedForm(publishedSchema);
+    return; // Skip builder initialization
+  }
+
+  // Regular builder mode
   buildPalette();
 
   // Load persisted state or seed with a starter form
@@ -97,6 +107,302 @@ document.addEventListener('DOMContentLoaded', () => {
   renderAll();
   syncSettingsInputs();
 });
+
+/* ── Parse published form URL hash ── */
+function parsePublishUrl() {
+  const hash = window.location.hash;
+  const match = hash.match(/#\/form\?s=([A-Za-z0-9_-]+)/);
+  if (!match || !match[1]) return null;
+  
+  try {
+    return decodeSchema(match[1]);
+  } catch (err) {
+    console.error('Failed to decode form schema:', err);
+    showToast('Invalid form link — the URL may be corrupted.', 'error');
+    return null;
+  }
+}
+
+/* Decode schema from URL-safe base64 string */
+function decodeSchema(encoded) {
+  try {
+    // Reverse the URL-safe encoding
+    const b64 = encoded.replace(/[-]/g, '+').replace(/[_]/g, '/');
+    // Add padding if needed
+    const padded = b64 + '='.repeat((4 - b64.length % 4) % 4);
+    const json = decodeURIComponent(escape(atob(padded)));
+    return JSON.parse(json);
+  } catch (err) {
+    throw new Error('Decoding failed: ' + err.message);
+  }
+}
+
+/* Render published form submission view */
+function renderPublishedForm(schema) {
+  // Hide the builder UI and show form submission interface
+  const app = document.getElementById('app');
+  if (app) app.style.display = 'none';
+
+  // Create dedicated submission page
+  const container = document.createElement('div');
+  container.id = 'published-form-container';
+  container.className = 'published-form-page';
+  
+  const title = schema.title || 'Untitled Form';
+  const desc = schema.description || '';
+  
+  container.innerHTML = `
+    <div class="pub-form-wrapper">
+      <div class="pub-form-card">
+        <div class="pub-form-header">
+          <div class="pub-form-brand">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="2" width="7" height="7" rx="2" fill="currentColor"/>
+              <rect x="11" y="2" width="7" height="7" rx="2" fill="currentColor" opacity=".5"/>
+              <rect x="2" y="11" width="7" height="7" rx="2" fill="currentColor" opacity=".5"/>
+              <rect x="11" y="11" width="7" height="7" rx="2" fill="currentColor" opacity=".25"/>
+            </svg>
+            <span>FormCraft</span>
+          </div>
+          <h1 class="pub-form-title">${esc(title)}</h1>
+          ${desc ? `<p class="pub-form-desc">${esc(desc)}</p>` : ''}
+        </div>
+        <form id="published-form" class="pub-form-body">
+          ${schema.fields.map(buildPublishedField).join('')}
+          <div class="pub-form-footer">
+            <button type="submit" class="btn btn-primary btn-lg">Submit</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(container);
+  
+  // Wire form submission
+  document.getElementById('published-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    handlePublishedFormSubmit(schema);
+  });
+  
+  // Wire sliders
+  container.querySelectorAll('.pub-slider').forEach(inp => {
+    const valEl = document.getElementById(inp.dataset.valId);
+    inp.addEventListener('input', () => { if(valEl) valEl.textContent = inp.value; });
+  });
+}
+
+/* Build a single published form field */
+function buildPublishedField(field) {
+  if (field.type === 'divider') {
+    return `<div class="pub-divider"><div class="pub-divider-line"></div><span class="pub-divider-label">${esc(field.label)}</span><div class="pub-divider-line"></div></div>`;
+  }
+
+  const label = field.label || `Untitled ${TYPE_META[field.type]?.label || 'Field'}`;
+  const req = field.required ? '<span class="pub-req">*</span>' : '';
+  const hint = field.hint ? `<p class="pub-hint">${esc(field.hint)}</p>` : '';
+  const fname = field.name || labelToName(field.label);
+
+  let control = '';
+
+  if (field.type === 'textarea') {
+    control = `<textarea rows="${field.rows || 4}" placeholder="${esc(field.placeholder || '')}" name="${fname}" ${field.required ? 'required' : ''}></textarea>`;
+
+  } else if (field.type === 'select') {
+    const opts = field.options || [];
+    control = `<select name="${fname}" ${field.required ? 'required' : ''}><option value="">— Choose an option —</option>${opts.map(o => `<option>${esc(o)}</option>`).join('')}</select>`;
+
+  } else if (field.type === 'checkbox') {
+    return `<div class="pub-field"><label class="pub-label">${esc(label)}${req}</label>${hint}<label class="pub-option-row"><input type="checkbox" name="${fname}" ${field.required ? 'required' : ''}/><span class="pub-option-label">${esc(field.checkboxLabel || 'Check this box')}</span></label></div>`;
+
+  } else if (field.type === 'radio') {
+    const opts = field.options || [];
+    const rname = fname + '_' + field.id;
+    return `<div class="pub-field"><label class="pub-label">${esc(label)}${req}</label>${hint}<div class="pub-radio-group">${opts.map(o => `<label class="pub-option-row"><input type="radio" name="${rname}" value="${esc(o)}" ${field.required ? 'required' : ''}/><span class="pub-option-label">${esc(o)}</span></label>`).join('')}</div></div>`;
+
+  } else if (field.type === 'range') {
+    const vid = 'rv_' + field.id;
+    const def = field.defaultVal !== undefined ? field.defaultVal : field.min || 0;
+    return `<div class="pub-field"><div class="pub-slider-header"><label class="pub-label">${esc(label)}${req}</label><span class="pub-slider-val" id="${vid}">${def}</span></div>${hint}<input type="range" class="pub-slider" data-val-id="${vid}" name="${fname}" min="${field.min || 0}" max="${field.max || 100}" step="${field.step || 1}" value="${def}"/><div class="pub-slider-limits"><span>${field.min || 0}</span><span>${field.max || 100}</span></div></div>`;
+
+  } else if (field.type === 'file') {
+    const acc = field.accept ? `accept="${esc(field.accept)}"` : '';
+    const mul = field.multiple ? 'multiple' : '';
+    return `<div class="pub-field"><label class="pub-label">${esc(label)}${req}</label>${hint}<input type="file" name="${fname}" ${acc} ${mul} ${field.required ? 'required' : ''}/><p class="pub-file-note">Files are uploaded to Google Drive on submit.</p></div>`;
+
+  } else if (field.type === 'email') {
+    control = `<input type="email" name="${fname}" placeholder="${esc(field.placeholder || 'you@example.com')}" ${field.required ? 'required' : ''}/>`;
+
+  } else if (field.type === 'tel') {
+    control = `<input type="tel" name="${fname}" placeholder="${esc(field.placeholder || '+1 (555) 000-0000')}" ${field.required ? 'required' : ''}/>`;
+
+  } else if (field.type === 'url') {
+    control = `<input type="url" name="${fname}" placeholder="${esc(field.placeholder || 'https://example.com')}" ${field.required ? 'required' : ''}/>`;
+
+  } else if (field.type === 'number') {
+    let attrs = `type="number" name="${fname}" placeholder="${esc(field.placeholder || '0')}"`;
+    if (field.min !== '' && field.min !== undefined) attrs += ` min="${field.min}"`;
+    if (field.max !== '' && field.max !== undefined) attrs += ` max="${field.max}"`;
+    if (field.required) attrs += ' required';
+    control = `<input ${attrs}/>`;
+
+  } else if (field.type === 'date') {
+    control = `<input type="date" name="${fname}" ${field.required ? 'required' : ''}/>`;
+
+  } else {
+    // Generic text input
+    control = `<input type="text" name="${fname}" placeholder="${esc(field.placeholder || '')}" ${field.required ? 'required' : ''}/>`;
+  }
+
+  return `<div class="pub-field"><label class="pub-label">${esc(label)}${req}</label>${hint}${control}</div>`;
+}
+
+/* Handle published form submission */
+async function handlePublishedFormSubmit(schema) {
+  const form = document.getElementById('published-form');
+  if (!form) return;
+
+  // Validate required fields
+  const errors = [];
+  schema.fields.forEach(field => {
+    if (field.type === 'divider' || !field.required) return;
+    const fname = field.name || labelToName(field.label);
+    const inputs = form.querySelectorAll(`[name="${fname}"]`);
+    
+    if (field.type === 'checkbox') {
+      if (!form.querySelector(`input[name="${fname}"]:checked`)) {
+        errors.push(`${field.label || 'Field'} is required.`);
+      }
+    } else if (field.type === 'radio') {
+      if (!form.querySelector(`input[name="${fname}_${field.id}"]:checked`)) {
+        errors.push(`${field.label || 'Field'} is required.`);
+      }
+    } else {
+      const input = form.querySelector(`[name="${fname}"]`);
+      if (!input || !input.value.trim()) {
+        errors.push(`${field.label || 'Field'} is required.`);
+      }
+    }
+  });
+
+  if (errors.length) {
+    showToast(errors[0], 'error');
+    return;
+  }
+
+  // Collect form data
+  const data = await collectPublishedData(schema);
+  
+  // Check for action URL
+  const actionUrl = (schema.settings && schema.settings.actionUrl) || '';
+  if (!actionUrl.trim()) {
+    showToast('This form is not configured to receive submissions.', 'error');
+    return;
+  }
+
+  showSubmitOverlay('loading', 'Submitting…', 'Sending your response…');
+
+  try {
+    const payload = {
+      _meta: { form: schema.title, description: schema.description, submittedAt: new Date().toISOString() },
+      ...data,
+    };
+
+    const isGoogle = actionUrl.includes('script.google.com');
+    let body, headers = {};
+    
+    if (schema.settings?.contentType === 'application/x-www-form-urlencoded' && !isGoogle) {
+      headers['Content-Type'] = 'application/x-www-form-urlencoded';
+      body = new URLSearchParams(data).toString();
+    } else {
+      if (!isGoogle) headers['Content-Type'] = 'application/json';
+      body = JSON.stringify(payload);
+    }
+
+    let extraHeaders = {};
+    try {
+      const raw = (schema.settings?.headers || '').trim();
+      if (raw) extraHeaders = JSON.parse(raw);
+    } catch { }
+    headers = { ...headers, ...extraHeaders };
+
+    const opts = { method: schema.settings?.method || 'POST', body };
+    if (isGoogle) opts.mode = 'no-cors'; else opts.headers = headers;
+
+    const res = await fetch(actionUrl, opts);
+
+    if (isGoogle || res.type === 'opaque') {
+      showSubmitOverlay('success', schema.settings?.successMsg || 'Thank you!', 'Your response has been submitted.');
+      setTimeout(() => {
+        if (schema.settings?.redirectUrl) {
+          window.location.href = schema.settings.redirectUrl;
+        } else {
+          document.getElementById('published-form').reset();
+          showToast('Form reset', 'success');
+        }
+      }, 1800);
+      return;
+    }
+
+    if (res.ok) {
+      showSubmitOverlay('success', schema.settings?.successMsg || 'Thank you!', 'Your response has been submitted.');
+      setTimeout(() => {
+        if (schema.settings?.redirectUrl) {
+          window.location.href = schema.settings.redirectUrl;
+        } else {
+          document.getElementById('published-form').reset();
+          showToast('Form reset', 'success');
+        }
+      }, 1800);
+    } else {
+      showSubmitOverlay('error', 'Submission failed', `HTTP ${res.status} ${res.statusText}`, null, true);
+    }
+  } catch (err) {
+    showSubmitOverlay('error', 'Network error', err.message || 'Could not reach the submission endpoint.', null, true);
+  }
+}
+
+/* Collect published form data including file uploads */
+async function collectPublishedData(schema) {
+  const form = document.getElementById('published-form');
+  const data = {};
+
+  const promises = schema.fields.map(field => {
+    if (field.type === 'divider') return Promise.resolve();
+    const fname = field.name || labelToName(field.label);
+
+    if (field.type === 'checkbox') {
+      const el = form.querySelector(`input[name="${fname}"]`);
+      data[fname] = el ? el.checked : false;
+    } else if (field.type === 'radio') {
+      const el = form.querySelector(`input[name="${fname}_${field.id}"]:checked`);
+      data[fname] = el ? el.value : '';
+    } else if (field.type === 'textarea') {
+      const el = form.querySelector(`textarea[name="${fname}"]`);
+      data[fname] = el ? el.value : '';
+    } else if (field.type === 'select') {
+      const el = form.querySelector(`select[name="${fname}"]`);
+      data[fname] = el ? el.value : '';
+    } else if (field.type === 'file') {
+      const el = form.querySelector(`input[name="${fname}"]`);
+      const file = el?.files?.[0];
+      if (!file) { data[fname] = ''; return Promise.resolve(); }
+      return new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onload = () => { data[fname] = { name: file.name, type: file.type, size: file.size, data: reader.result }; resolve(); };
+        reader.onerror = () => { data[fname] = '[read error]'; resolve(); };
+        reader.readAsDataURL(file);
+      });
+    } else {
+      const el = form.querySelector(`input[name="${fname}"]`);
+      data[fname] = el ? el.value : '';
+    }
+    return Promise.resolve();
+  });
+
+  await Promise.all(promises);
+  return data;
+}
 
 function tryLoadState() {
   try {
@@ -838,10 +1144,16 @@ async function doSubmit(f, data, url) {
 }
 
 function retrySubmit() {
-  if (!state.lastPayload) return;
-  closeSubmitOverlay();
-  const {f,data,url} = state.lastPayload;
-  doSubmit(f,data,url);
+  if (state.lastPayload) {
+    // Retry from builder preview mode
+    closeSubmitOverlay();
+    const {f,data,url} = state.lastPayload;
+    doSubmit(f,data,url);
+  } else if (window.location.hash.includes('#/form?s=')) {
+    // Retry from published form mode - reload to reset form
+    closeSubmitOverlay();
+    window.location.reload();
+  }
 }
 
 function resetPreviewForm() {

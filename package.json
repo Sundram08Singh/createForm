@@ -1,0 +1,43 @@
+{
+  "name": "create-form",
+  "version": "1.0.0",
+  "description": "A powerful, open-source form builder with shareable links and Google Sheets integration",
+  "main": "app.js",
+  "scripts": {
+    "start": "http-server -p 8000",
+    "test": "node tests/test.js",
+    "serve": "python3 -m http.server 8000",
+    "serve-windows": "python -m http.server 8000",
+    "lint": "eslint app.js --fix",
+    "format": "prettier --write \"**/*.{js,css,html,md}\"",
+    "check": "npm test && npm run lint"
+  },
+  "keywords": [
+    "form-builder",
+    "forms",
+    "survey",
+    "data-collection",
+    "google-sheets",
+    "no-backend",
+    "open-source"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shivamkumarsingh28/createForm.git"
+  },
+  "bugs": {
+    "url": "https://github.com/shivamkumarsingh28/createForm/issues"
+  },
+  "homepage": "https://github.com/shivamkumarsingh28/createForm#readme",
+  "devDependencies": {
+    "http-server": "^14.1.1",
+    "eslint": "^8.0.0",
+    "prettier": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=14.0.0",
+    "npm": ">=6.0.0"
+  }
+}
