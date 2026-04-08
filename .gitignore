@@ -12,6 +12,10 @@ pnpm-debug.log*
 .next
 out/
 
+# local env files
+backend/
+/backend
+
 # Environment files
 .env
 .env.local
@@ -46,7 +50,6 @@ $RECYCLE.BIN/
 .temp/
 tmp/
 temp/
-backend/
 
 # Browser storage (development)
 # Uncomment if you want to ignore browser storage
@@ -101,3 +104,4 @@ __pycache__/
 dist/
 build/
 *.egg-info/
+

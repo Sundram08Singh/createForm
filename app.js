@@ -37,6 +37,8 @@ const TYPE_DEFAULTS = {
   divider:  { label:'Section' },
 };
 
+const APP_NAME = 'CreateForm';
+
 /* ── Application state ─────────────────────────────────────────────────── */
 let state = {
   forms:         [],        // Array of form objects
@@ -111,11 +113,11 @@ document.addEventListener('DOMContentLoaded', () => {
 /* ── Parse published form URL hash ── */
 function parsePublishUrl() {
   const hash = window.location.hash;
-  const match = hash.match(/#\/form\?s=([A-Za-z0-9_-]+)/);
+  const match = hash.match(/#\/form\?s=([^&]+)/);
   if (!match || !match[1]) return null;
-  
+
   try {
-    return decodeSchema(match[1]);
+    return decodeSchema(decodeURIComponent(match[1]));
   } catch (err) {
     console.error('Failed to decode form schema:', err);
     showToast('Invalid form link — the URL may be corrupted.', 'error');
@@ -150,6 +152,7 @@ function renderPublishedForm(schema) {
   
   const title = schema.title || 'Untitled Form';
   const desc = schema.description || '';
+  document.title = title + ' | ' + APP_NAME;
   
   container.innerHTML = `
     <div class="pub-form-wrapper">
@@ -162,7 +165,7 @@ function renderPublishedForm(schema) {
               <rect x="2" y="11" width="7" height="7" rx="2" fill="currentColor" opacity=".5"/>
               <rect x="11" y="11" width="7" height="7" rx="2" fill="currentColor" opacity=".25"/>
             </svg>
-            <span>FormCraft</span>
+            <span>${esc(APP_NAME)}</span>
           </div>
           <h1 class="pub-form-title">${esc(title)}</h1>
           ${desc ? `<p class="pub-form-desc">${esc(desc)}</p>` : ''}
@@ -1278,8 +1281,16 @@ function publishForm() {
 
   const schema  = buildSchema(f);
   const encoded = encodeSchema(schema);
-  const base    = window.location.href.replace(/\/[^\/]*$/, '/');  /* same dir */
-  const pubUrl  = base + '#/form?s=' + encoded;
+
+  const currentUrl = new URL(window.location.href);
+  let basePath = currentUrl.pathname;
+  basePath = basePath.replace(/index\.html$/, '');
+  if (!basePath.endsWith('/')) {
+    basePath += '/';
+  }
+
+  const base = currentUrl.origin + basePath;
+  const pubUrl = base + '#/form?s=' + encodeURIComponent(encoded);
 
   /* Render the publish modal */
   openPublishModal(pubUrl, f.title);
